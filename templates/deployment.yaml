@@ -162,6 +162,7 @@ spec:
               find -name query_output\* -ctime +1 -exec rm -fv '{}' \;
               find -name download_\* -ctime +1 -exec rm -rfv '{}' \;
               find -name scratch_sid_\* -ctime +4 -exec rm -rfv '{}' \;
+              find -name .lock* -ctime +1 -exec rm -fv '{}' \;
               find -wholename \*scratch_sid_statuscaketeststatuscaketest_jid\* -amin +60 -exec rm -rfv '{}' \;
               sleep 10
             done
