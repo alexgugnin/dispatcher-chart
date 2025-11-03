@@ -160,7 +160,7 @@ spec:
               date             
               df -h /data/dispatcher_scratch
               find -name query_output\* -ctime +1 -exec rm -fv '{}' \;
-              find -name download_\* -ctime +1 -exec rm -fv '{}' \;
+              find -name download_\* -ctime +1 -exec rm -rfv '{}' \;
               find -name scratch_sid_\* -ctime +4 -exec rm -rfv '{}' \;
               find -wholename \*scratch_sid_statuscaketeststatuscaketest_jid\* -amin +60 -exec rm -rfv '{}' \;
               sleep 10
