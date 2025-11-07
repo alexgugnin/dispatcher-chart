@@ -160,9 +160,11 @@ spec:
               date             
               df -h /data/dispatcher_scratch
               find -name query_output\* -ctime +1 -exec rm -fv '{}' \;
-              find -name scratch_sid_\* -ctime +7 -exec rm -rfv '{}' \;
+              find -maxdepth 1 -name download_\* -ctime +1 -exec rm -rfv '{}' \;
+              find -maxdepth 1 -name scratch_sid_\* -ctime +4 -exec rm -rfv '{}' \;
+              find -maxdepth 1 -name .lock_\* -ctime +1 -exec rm -fv '{}' \;
               find -wholename \*scratch_sid_statuscaketeststatuscaketest_jid\* -amin +60 -exec rm -rfv '{}' \;
-              sleep 10
+              sleep 1h
             done
 
           ports: []
