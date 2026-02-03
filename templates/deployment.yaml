@@ -48,6 +48,8 @@ spec:
       - name: filelogdir
         persistentVolumeClaim:
           claimName: dispatcher-filelogdir
+      - name: homedir
+        emptyDir: {}
       {{- if .Values.dda.enable }}
       - name: {{ .Values.dda.ddcache.pvc_name }}
         persistentVolumeClaim:
@@ -89,6 +91,8 @@ spec:
           resources:
             {{- toYaml .Values.resources.dispatcher | nindent 12 }}
           env:
+          - name: HOME
+            value: /tmp/oda
           - name: ODA_SPARQL_ROOT
             value: {{ .Values.oda_sparql_root }}
           - name: DISPATCHER_MOCK_KB
@@ -134,10 +138,9 @@ spec:
             name: dispatcher-renku-ssh-key
             subPath: renku-ssh-key
             readOnly: true
-          - mountPath: /etc/passwd
-            name: dispatcher-users
-            subPath: passwd
-            readOnly: true          
+          - mountPath: /tmp/oda
+            name: homedir
+          
           {{- range $plugin := list "osa" "magic" "polar" "antares" "spiacs" "gw" "legacysurvey" "nb" }}
           - name: dispatcher-config-volume
             mountPath: /dispatcher/conf/conf.d/{{$plugin}}_data_server_conf.yml
