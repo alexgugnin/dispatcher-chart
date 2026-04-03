@@ -196,7 +196,55 @@ spec:
           volumeMounts:
           - mountPath: /data/dispatcher_scratch
             name: dispatcher-scratch-root
+            
+        {{- if .Values.usageMonitor.enabled }}
+        - name: usage-monitor
+          image: "{{ .Values.usageMonitor.image.repository }}:{{ .Values.usageMonitor.image.tag }}"
+          imagePullPolicy: Always
+          env:
+            - name: SCRATCH_DIR
+              value: "/data/dispatcher_scratch"
+            - name: DB_HOST
+              value: "mysql"
+            - name: DB_USER
+              value: "stats_bot"
+            - name: DB_NAME
+              value: "mmoda_usage"
+            - name: DB_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: mmoda-usage-secret
+                  key: db-password
+          
+          ports: []
+          livenessProbe:
+            exec:
+              command:
+              - df 
+              - -h
+              - /data/dispatcher_scratch
+            failureThreshold: 5
+            initialDelaySeconds: 15
+            periodSeconds: 60
+            timeoutSeconds: 30
 
+          readinessProbe:
+            exec:
+              command:
+              - df 
+              - -h
+              - /data/dispatcher_scratch
+            failureThreshold: 3
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 10
+            
+          volumeMounts:
+            - mountPath: /data/dispatcher_scratch
+              name: dispatcher-scratch-root
+              readOnly: true
+        {{- end }}
+        
        {{ if .Values.async_dispatcher }}
         - name: redis
           securityContext:
