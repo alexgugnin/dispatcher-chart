@@ -199,22 +199,27 @@ spec:
             
         {{- if .Values.usageMonitor.enabled }}
         - name: usage-monitor
-          image: "{{ .Values.usageMonitor.image.repository }}:{{ .Values.usageMonitor.image.tag }}"
-          imagePullPolicy: Always
+          image: "{{ .Values.usageMonitor.image.repository | default "ghcr.io/alexgugnin/oda-usage-monitor" }}:{{ .Values.usageMonitor.image.tag | default "latest" }}"
           env:
             - name: SCRATCH_DIR
-              value: "/data/dispatcher_scratch"
+              value: {{ .Values.usageMonitor.scratchDir | default "/data/dispatcher_scratch" | quote }}
             - name: DB_HOST
-              value: "mysql"
+              value: {{ .Values.usageMonitor.db.host | default "mysql" | quote }}
             - name: DB_USER
-              value: "stats_bot"
+              value: {{ .Values.usageMonitor.db.user | default "stats_bot" | quote }}
             - name: DB_NAME
-              value: "mmoda_usage"
+              value: {{ .Values.usageMonitor.db.name | default "mmoda_usage" | quote }}
+            
+            {{- if and .Values.usageMonitor.db.existingSecret .Values.usageMonitor.db.existingSecret.name }}
             - name: DB_PASS
               valueFrom:
                 secretKeyRef:
-                  name: mmoda-usage-secret
-                  key: db-password
+                  name: {{ .Values.usageMonitor.db.existingSecret.name | quote }}
+                  key: {{ .Values.usageMonitor.db.existingSecret.key | default "db-password" | quote }}
+            {{- else if .Values.usageMonitor.db.password }}
+            - name: DB_PASS
+              value: {{ .Values.usageMonitor.db.password | quote }}
+            {{- end }}
           
           ports: []
           livenessProbe:
@@ -240,8 +245,8 @@ spec:
             timeoutSeconds: 10
             
           volumeMounts:
-            - mountPath: /data/dispatcher_scratch
-              name: dispatcher-scratch-root
+            - name: dispatcher-scratch-root 
+              mountPath: {{ .Values.usageMonitor.scratchDir | default "/data/dispatcher_scratch" | quote }}
               readOnly: true
         {{- end }}
         
