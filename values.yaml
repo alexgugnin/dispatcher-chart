@@ -21,6 +21,9 @@ kg_registrar:
     repository:  ghcr.io/oda-hub/mmodabot-async-mmoda-kg-registrar
     tag: latest
     pullPolicy: IfNotPresent
+  ports:
+    container: 8181
+    service: 8181
 
 imagePullSecrets: []
 nameOverride: ""

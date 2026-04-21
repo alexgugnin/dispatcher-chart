@@ -11,9 +11,16 @@ spec:
       targetPort: http
       protocol: TCP
       name: http
+    {{- if .Values.kg_registrar.enabled }}
+    - port: {{ .Values.kg_registrar.ports.service }}
+      targetPort: registrar
+      protocol: TCP
+      name: registrar
+    {{- end }}
   selector:
     app.kubernetes.io/name: {{ include "chart.name" . }}
     app.kubernetes.io/instance: {{ .Release.Name }}
+{{- if .Values.async_dispatcher }}
 ---
 apiVersion: v1
 kind: Service
@@ -31,3 +38,4 @@ spec:
   selector:
     app.kubernetes.io/name: {{ include "chart.name" . }}-redis
     app.kubernetes.io/instance: {{ .Release.Name }}-redis
+{{- end }}

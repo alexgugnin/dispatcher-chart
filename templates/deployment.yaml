@@ -122,7 +122,7 @@ spec:
           imagePullPolicy: {{ .Values.kg_registrar.image.pullPolicy }}
           ports:
             - name: registrar
-              containerPort: 8181
+              containerPort: {{ .Values.kg_registrar.ports.container }}
           livenessProbe:
             httpGet:
               path: /openapi.json
