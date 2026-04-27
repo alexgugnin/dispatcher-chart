@@ -62,6 +62,90 @@ spec:
           claimName: redis-data
       {{ end }}
 
+      initContainers:
+        - name: {{ .Chart.Name }}-scratch-cleaner
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          # Setting restartPolicy: Always makes this a sidecar container.
+          # https://kubernetes.io/docs/concepts/workloads/pods/sidecar-containers/
+          restartPolicy: Always
+          command: ["bash"]
+          args:
+          - "-c"
+          - |
+            set -x
+            while true; do
+              date             
+              df -h /data/dispatcher_scratch
+              find -name query_output\* -ctime +1 -exec rm -fv '{}' \;
+              find -maxdepth 1 -name download_\* -ctime +1 -exec rm -rfv '{}' \;
+              find -maxdepth 1 -name scratch_sid_\* -ctime +4 -exec rm -rfv '{}' \;
+              find -maxdepth 1 -name .lock_\* -ctime +1 -exec rm -fv '{}' \;
+              find -wholename \*scratch_sid_statuscaketeststatuscaketest_jid\* -amin +60 -exec rm -rfv '{}' \;
+              sleep 1h
+            done
+
+          ports: []
+          livenessProbe:
+            exec:
+              command:
+              - df 
+              - -h
+              - /data/dispatcher_scratch
+            failureThreshold: 5
+            initialDelaySeconds: 15
+            periodSeconds: 60
+            timeoutSeconds: 30
+
+          readinessProbe:
+            exec:
+              command:
+              - df 
+              - -h
+              - /data/dispatcher_scratch
+            failureThreshold: 3
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 10
+          
+          volumeMounts:
+          - mountPath: /data/dispatcher_scratch
+            name: dispatcher-scratch-root
+
+        {{- if .Values.kg_registrar.enabled }}
+        - name: kg-registrar
+          # Setting restartPolicy: Always makes this a sidecar container.
+          restartPolicy: Always
+          image: "{{ .Values.kg_registrar.image.repository }}:{{ .Values.kg_registrar.image.tag }}"
+          imagePullPolicy: {{ .Values.kg_registrar.image.pullPolicy }}
+          ports:
+            - name: registrar
+              containerPort: {{ .Values.kg_registrar.ports.container }}
+          livenessProbe:
+            httpGet:
+              path: /openapi.json
+              port: registrar
+            failureThreshold: 5
+            initialDelaySeconds: 15
+            periodSeconds: 60
+            timeoutSeconds: 30
+
+          readinessProbe:
+            httpGet:
+              path: /openapi.json
+              port: registrar
+            failureThreshold: 3
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 10
+
+          volumeMounts:
+          - mountPath: /data
+            name: dispatcher-scratch-root
+        {{- end }}
+
       containers:
         - name: {{ .Chart.Name }}
           securityContext:
@@ -148,54 +232,6 @@ spec:
             readOnly: true
           {{- end }} 
 
-
-        - name: {{ .Chart.Name }}-scratch-cleaner
-          securityContext:
-            {{- toYaml .Values.securityContext | nindent 12 }}
-          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
-          imagePullPolicy: {{ .Values.image.pullPolicy }}
-          command: ["bash"]
-          args:
-          - "-c"
-          - |
-            set -x
-            while true; do
-              date             
-              df -h /data/dispatcher_scratch
-              find -name query_output\* -ctime +1 -exec rm -fv '{}' \;
-              find -maxdepth 1 -name download_\* -ctime +1 -exec rm -rfv '{}' \;
-              find -maxdepth 1 -name scratch_sid_\* -ctime +4 -exec rm -rfv '{}' \;
-              find -maxdepth 1 -name .lock_\* -ctime +1 -exec rm -fv '{}' \;
-              find -wholename \*scratch_sid_statuscaketeststatuscaketest_jid\* -amin +60 -exec rm -rfv '{}' \;
-              sleep 1h
-            done
-
-          ports: []
-          livenessProbe:
-            exec:
-              command:
-              - df 
-              - -h
-              - /data/dispatcher_scratch
-            failureThreshold: 5
-            initialDelaySeconds: 15
-            periodSeconds: 60
-            timeoutSeconds: 30
-
-          readinessProbe:
-            exec:
-              command:
-              - df 
-              - -h
-              - /data/dispatcher_scratch
-            failureThreshold: 3
-            initialDelaySeconds: 5
-            periodSeconds: 5
-            timeoutSeconds: 10
-          
-          volumeMounts:
-          - mountPath: /data/dispatcher_scratch
-            name: dispatcher-scratch-root
 
        {{ if .Values.async_dispatcher }}
         - name: redis
