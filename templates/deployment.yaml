@@ -147,108 +147,6 @@ spec:
             subPath: {{$plugin}}_data_server_conf.yml
             readOnly: true
           {{- end }} 
-
-
-        - name: {{ .Chart.Name }}-scratch-cleaner
-          securityContext:
-            {{- toYaml .Values.securityContext | nindent 12 }}
-          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
-          imagePullPolicy: {{ .Values.image.pullPolicy }}
-          command: ["bash"]
-          args:
-          - "-c"
-          - |
-            set -x
-            while true; do
-              date             
-              df -h /data/dispatcher_scratch
-              find -name query_output\* -ctime +1 -exec rm -fv '{}' \;
-              find -maxdepth 1 -name download_\* -ctime +1 -exec rm -rfv '{}' \;
-              find -maxdepth 1 -name scratch_sid_\* -ctime +4 -exec rm -rfv '{}' \;
-              find -maxdepth 1 -name .lock_\* -ctime +1 -exec rm -fv '{}' \;
-              find -wholename \*scratch_sid_statuscaketeststatuscaketest_jid\* -amin +60 -exec rm -rfv '{}' \;
-              sleep 1h
-            done
-
-          ports: []
-          livenessProbe:
-            exec:
-              command:
-              - df 
-              - -h
-              - /data/dispatcher_scratch
-            failureThreshold: 5
-            initialDelaySeconds: 15
-            periodSeconds: 60
-            timeoutSeconds: 30
-
-          readinessProbe:
-            exec:
-              command:
-              - df 
-              - -h
-              - /data/dispatcher_scratch
-            failureThreshold: 3
-            initialDelaySeconds: 5
-            periodSeconds: 5
-            timeoutSeconds: 10
-          
-          volumeMounts:
-          - mountPath: /data/dispatcher_scratch
-            name: dispatcher-scratch-root
-            
-        {{- if .Values.usageMonitor.enabled }}
-        - name: usage-monitor
-          image: "{{ .Values.usageMonitor.image.repository | default "ghcr.io/alexgugnin/oda-usage-monitor" }}:{{ .Values.usageMonitor.image.tag | default "latest" }}"
-          env:
-            - name: SCRATCH_DIR
-              value: {{ .Values.usageMonitor.scratchDir | default "/data/dispatcher_scratch" | quote }}
-            - name: DB_HOST
-              value: {{ .Values.usageMonitor.db.host | default "mysql" | quote }}
-            - name: DB_USER
-              value: {{ .Values.usageMonitor.db.user | default "stats_bot" | quote }}
-            - name: DB_NAME
-              value: {{ .Values.usageMonitor.db.name | default "mmoda_usage" | quote }}
-            
-            {{- if and .Values.usageMonitor.db.existingSecret .Values.usageMonitor.db.existingSecret.name }}
-            - name: DB_PASS
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Values.usageMonitor.db.existingSecret.name | quote }}
-                  key: {{ .Values.usageMonitor.db.existingSecret.key | default "db-password" | quote }}
-            {{- else if .Values.usageMonitor.db.password }}
-            - name: DB_PASS
-              value: {{ .Values.usageMonitor.db.password | quote }}
-            {{- end }}
-          
-          ports: []
-          livenessProbe:
-            exec:
-              command:
-              - df 
-              - -h
-              - /data/dispatcher_scratch
-            failureThreshold: 5
-            initialDelaySeconds: 15
-            periodSeconds: 60
-            timeoutSeconds: 30
-
-          readinessProbe:
-            exec:
-              command:
-              - df 
-              - -h
-              - /data/dispatcher_scratch
-            failureThreshold: 3
-            initialDelaySeconds: 5
-            periodSeconds: 5
-            timeoutSeconds: 10
-            
-          volumeMounts:
-            - name: dispatcher-scratch-root 
-              mountPath: {{ .Values.usageMonitor.scratchDir | default "/data/dispatcher_scratch" | quote }}
-              readOnly: true
-        {{- end }}
         
        {{ if .Values.async_dispatcher }}
         - name: redis
@@ -349,6 +247,110 @@ spec:
 
 
       {{- end }}
+
+      initContainers:
+        - name: {{ .Chart.Name }}-scratch-cleaner
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          restartPolicy: Always
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: ["bash"]
+          args:
+          - "-c"
+          - |
+            set -x
+            while true; do
+              date             
+              df -h /data/dispatcher_scratch
+              find -name query_output\* -ctime +1 -exec rm -fv '{}' \;
+              find -maxdepth 1 -name download_\* -ctime +1 -exec rm -rfv '{}' \;
+              find -maxdepth 1 -name scratch_sid_\* -ctime +4 -exec rm -rfv '{}' \;
+              find -maxdepth 1 -name .lock_\* -ctime +1 -exec rm -fv '{}' \;
+              find -wholename \*scratch_sid_statuscaketeststatuscaketest_jid\* -amin +60 -exec rm -rfv '{}' \;
+              sleep 1h
+            done
+
+          ports: []
+          livenessProbe:
+            exec:
+              command:
+              - df 
+              - -h
+              - /data/dispatcher_scratch
+            failureThreshold: 5
+            initialDelaySeconds: 15
+            periodSeconds: 60
+            timeoutSeconds: 30
+
+          readinessProbe:
+            exec:
+              command:
+              - df 
+              - -h
+              - /data/dispatcher_scratch
+            failureThreshold: 3
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 10
+          
+          volumeMounts:
+          - mountPath: /data/dispatcher_scratch
+            name: dispatcher-scratch-root
+        
+        {{- if .Values.usageMonitor.enabled }}
+        - name: usage-monitor
+          image: "{{ .Values.usageMonitor.image.repository | default "ghcr.io/alexgugnin/oda-usage-monitor" }}:{{ .Values.usageMonitor.image.tag | default "latest" }}"
+          restartPolicy: Always
+          env:
+            - name: SCRATCH_DIR
+              value: {{ .Values.usageMonitor.scratchDir | default "/data/dispatcher_scratch" | quote }}
+            - name: DB_HOST
+              value: {{ .Values.usageMonitor.db.host | default "mysql" | quote }}
+            - name: DB_USER
+              value: {{ .Values.usageMonitor.db.user | default "stats_bot" | quote }}
+            - name: DB_NAME
+              value: {{ .Values.usageMonitor.db.name | default "mmoda_usage" | quote }}
+            
+            {{- if and .Values.usageMonitor.db.existingSecret .Values.usageMonitor.db.existingSecret.name }}
+            - name: DB_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.usageMonitor.db.existingSecret.name | quote }}
+                  key: {{ .Values.usageMonitor.db.existingSecret.key | default "db-password" | quote }}
+            {{- else if .Values.usageMonitor.db.password }}
+            - name: DB_PASS
+              value: {{ .Values.usageMonitor.db.password | quote }}
+            {{- end }}
+          
+          ports: []
+          livenessProbe:
+            exec:
+              command:
+              - df 
+              - -h
+              - /data/dispatcher_scratch
+            failureThreshold: 5
+            initialDelaySeconds: 15
+            periodSeconds: 60
+            timeoutSeconds: 30
+
+          readinessProbe:
+            exec:
+              command:
+              - df 
+              - -h
+              - /data/dispatcher_scratch
+            failureThreshold: 3
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 10
+            
+          volumeMounts:
+            - name: dispatcher-scratch-root 
+              mountPath: {{ .Values.usageMonitor.scratchDir | default "/data/dispatcher_scratch" | quote }}
+              readOnly: true
+        {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
